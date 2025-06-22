@@ -1,0 +1,11 @@
+{
+  "Version": 1,
+  "Hash": "rM1QwdLzIdckkR8zIAhChOSKXjd/o88W4FpuauPnoMU=",
+  "Source": "DotNetApiWithEF",
+  "BasePath": "_content/DotNetApiWithEF",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": []
+}
