@@ -1,28 +1,24 @@
-using DotNetApi.Data;
-using DotNetApi.Dtos;
+using DotNetApiWithEF.Data;
+using DotNetApiWithEF.Dtos;
 using Microsoft.AspNetCore.Mvc;
-using DotNetApi.Models;
+using DotNetApiWithEF.Models;
 using AutoMapper;
-using System.Linq.Expressions;
 
-namespace DotNetApi.Controllers;
+namespace DotNetApiWithEF.Controllers;
 
 [ApiController]  // Indicates this class defines a Web API controller
-[Route("[controller]")]  // Route will be based on the controller name: /User
+[Route("[controller]")]  // Route will be based on the controller name: /UserEF
 public class UserEFController : ControllerBase
 {
 
-  // Dependency for interacting with the database via Entity Framework
-  DataContextEF _entityFramework;
+  private readonly IUserRepository _userRepository;  // Dependency for accessing user data from the repository
+  private readonly IMapper _mapper;  // AutoMapper instance for mapping between DTOs and entities
 
-  // Dependency for mapping DTOs to models
-  IMapper _mapper;
 
-  // Constructor initializes the EF data context and AutoMapper configuration
-  public UserEFController(IConfiguration config)
+  // Constructor initializes repository and configures AutoMapper
+  public UserEFController(IConfiguration config, IUserRepository userRepository)
   {
-    // Initialize EF Core context with configuration (connection string)
-    _entityFramework = new DataContextEF(config);
+    _userRepository = userRepository;
 
     // Configure AutoMapper to map from UserToAddDto to User entity
     _mapper = new Mapper(new MapperConfiguration(cfg =>
@@ -37,7 +33,7 @@ public class UserEFController : ControllerBase
   [HttpGet("GetUsers")]
   public IEnumerable<User> GetUsers()
   {
-    IEnumerable<User> users = _entityFramework.Users.ToList<User>();
+    IEnumerable<User> users = _userRepository.GetUsers();
     return users;
   }
 
@@ -47,18 +43,8 @@ public class UserEFController : ControllerBase
   [HttpGet("GetUsers/{userId}")]
   public User GetSingleUser(int userId)
   {
-
-    User? user = _entityFramework.Users
-        .Where(u => u.UserId == userId)
-        .FirstOrDefault<User>();
-    if (user != null)
-    {
-      return user;
-    }
-
-    throw new Exception("Failed to Get User");
+    return _userRepository.GetSingleUser(userId);
   }
-
 
 
   // PUT: /UserEF/EditUser
@@ -66,14 +52,12 @@ public class UserEFController : ControllerBase
   [HttpPut("EditUser")]
   public IActionResult EditUser(User user)
   {
-    // Look for the user in the database
-    User? userDb = _entityFramework.Users
-        .Where(u => u.UserId == user.UserId)
-        .FirstOrDefault<User>();
+    // Retrieve existing user
+    User? userDb = _userRepository.GetSingleUser(user.UserId);
 
     if (userDb != null)
     {
-      // Update fields
+      // Update user fields
       userDb.Active = user.Active;
       userDb.FirstName = user.FirstName;
       userDb.LastName = user.LastName;
@@ -81,7 +65,7 @@ public class UserEFController : ControllerBase
       userDb.Gender = user.Gender;
 
       // Save changes to the database
-      if (_entityFramework.SaveChanges() > 0)
+      if (_userRepository.SaveChanges())
       {
         return Ok();
       }
@@ -94,19 +78,18 @@ public class UserEFController : ControllerBase
   }
 
 
-
   // POST: /UserEF/AddUser
-  // Adds a new user to the database using data from a DTO
+  // Adds a new user to the database using a DTO
   [HttpPost("AddUser")]
   public IActionResult AddUser(UserToAddDto user)
   {
 
-    // Map the DTO to the User entity
+    // Convert DTO to User entity
     User userDb = _mapper.Map<User>(user);
 
-    // Add the new user and save changes
-    _entityFramework.Add(userDb);
-    if (_entityFramework.SaveChanges() > 0)
+    // Add to database and save
+    _userRepository.AddEntity<User>(userDb);
+    if (_userRepository.SaveChanges())
     {
       return Ok();
     }
@@ -115,22 +98,19 @@ public class UserEFController : ControllerBase
   }
 
 
-
   // DELETE: /UserEF/DeleteUser/{userId}
   // Deletes a user from the database by userId
   [HttpDelete("DeleteUser/{userId}")]
   public IActionResult DeleteUser(int userId)
   {
     // Find the user
-    User? userDb = _entityFramework.Users
-        .Where(u => u.UserId == userId)
-        .FirstOrDefault<User>();
+    User? userDb = _userRepository.GetSingleUser(userId);
 
     if (userDb != null)
     {
-      // Remove and save changes
-      _entityFramework.Remove(userDb);
-      if (_entityFramework.SaveChanges() > 0)
+      // Delete user and save changes
+      _userRepository.RemoveEntity<User>(userDb);
+      if (_userRepository.SaveChanges())
       {
         return Ok();
       }
@@ -138,5 +118,161 @@ public class UserEFController : ControllerBase
       throw new Exception("Failed to Delete User");
     }
     throw new Exception("Failed to Get User");
+  }
+
+
+  // GET: /UserEF/GetAllUsersSalary
+  // Returns salary information for all users
+  [HttpGet("GetAllUsersSalary")]
+  public IEnumerable<UserSalary> GetAllUsersSalary()
+  {
+    return _userRepository.GetUserSalaries();
+  }
+
+
+  // GET: /UserEF/GetUsersSalary/{userId}
+  // Returns salary information for a specific user
+  [HttpGet("GetUsersSalary/{userId}")]
+  public UserSalary GetUsersSalary(int userId)
+  {
+    return _userRepository.GetSingleUserSalary(userId);
+  }
+
+
+  // POST: /UserEF/AddUserSalary
+  // Adds salary info for a user
+  [HttpPost("AddUserSalary")]
+  public IActionResult AddUserSalary(UserSalary userSalaryInsert)
+  {
+    _userRepository.AddEntity<UserSalary>(userSalaryInsert);
+    if (_userRepository.SaveChanges())
+    {
+      return Ok();
+    }
+    throw new Exception("Failed to Update User");
+  }
+
+
+  // PUT: /UserEF/EditUserSalary
+  // Edits salary info for a user
+  [HttpPut("EditUserSalary")]
+  public IActionResult EditUserSalary(UserSalary userSalary)
+  {
+    // Find the user's salary record
+    UserSalary? userSalaryDb = _userRepository.GetSingleUserSalary(userSalary.UserId);
+
+    if (userSalaryDb != null)
+    {
+      // Update salary
+      userSalaryDb.Salary = userSalary.Salary;
+
+      // Save changes
+      if (_userRepository.SaveChanges())
+      {
+        return Ok();
+      }
+      throw new Exception("Failed to Add User");
+    }
+    throw new Exception("Failed to Get User");
+  }
+
+
+  // DELETE: /UserEF/RemoveUserSalary
+  // Removes a user's salary info
+  [HttpDelete("RemoveUserSalary")]
+  public IActionResult RemoveUserSalary(int userId)
+  {
+    // Find salary record
+    UserSalary? userToDelete = _userRepository.GetSingleUserSalary(userId);
+
+    if (userToDelete != null)
+    {
+      // Remove and save
+      _userRepository.RemoveEntity<UserSalary>(userToDelete);
+      if (_userRepository.SaveChanges())
+      {
+        return Ok();
+      }
+      throw new Exception("Failed to Add User");
+    }
+    throw new Exception("Failed to Get User");
+  }
+
+
+  // GET: /UserEF/GetUserJobInfos
+  // Retrieves and returns all users from the database
+  [HttpGet("GetUsersJobInfos")]
+  public IEnumerable<UserJobInfo> GetUserJobInfos()
+  {
+    IEnumerable<UserJobInfo> userJobInfos = _userRepository.GetUserJobInfos();
+    return userJobInfos;
+  }
+
+
+  // GET: /UserEF/GetUserJobInfos/{userId}
+  // Returns job information for a specific user
+  [HttpGet("GetUserJobInfos/{userId}")]
+  public UserJobInfo GetUserJobInfo(int userId)
+  {
+    return _userRepository.GetSingleUserJobInfo(userId);
+  }
+
+
+  // PUT: /UserEF/EditUserJobInfo
+  // Edits job info for a user
+  [HttpPut("EditUserJobInfo")]
+  public IActionResult EditUserJobInfo(UserJobInfo userJobToEdit)
+  {
+    // Find the user's salary record
+    UserJobInfo? userJobInfoDb = _userRepository.GetSingleUserJobInfo(userJobToEdit.UserId);
+
+    if (userJobInfoDb != null)
+    {
+      // Update salary
+      userJobInfoDb.JobTitle = userJobToEdit.JobTitle;
+
+      // Update department
+      userJobInfoDb.Department = userJobToEdit.Department;
+
+      // Save changes
+      if (_userRepository.SaveChanges())
+      {
+        return Ok();
+      }
+      throw new Exception("Failed to Add User");
+    }
+    throw new Exception("Failed to Get User");
+  }
+
+
+  // POST: /UserEF/AddUserJobInfo
+  // Adds job info for a user
+  [HttpPost("AddUserJobInfo")]
+  public IActionResult AddUserJobInfo(UserJobInfo userJobInfoToInsert)
+  {
+    _userRepository.AddEntity<UserJobInfo>(userJobInfoToInsert);
+    if (_userRepository.SaveChanges())
+    {
+      return Ok();
+    }
+    throw new Exception("Failed to Update User");
+  }
+  
+
+  // Delete: /UserEF/DeleteUserJobInfo
+  // Adds job info for a user
+  [HttpPost("DeleteUserJobInfo/{userId}")]
+  public IActionResult DeleteUserJobInfo(int userId)
+  {
+    // Find the user's salary record
+    UserJobInfo userJobIntoToDelete = _userRepository.GetSingleUserJobInfo(userId);
+
+    // Remove and save
+    _userRepository.RemoveEntity(userJobIntoToDelete);
+    if (_userRepository.SaveChanges())
+    {
+      return Ok();
+    }
+    throw new Exception("Failed to Update User");
   }
 }

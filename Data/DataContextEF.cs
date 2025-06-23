@@ -1,7 +1,7 @@
-using DotNetApi.Models;
+using DotNetApiWithEF.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace DotNetApi.Data
+namespace DotNetApiWithEF.Data
 {
   
   // This class handles communication with the database using Entity Framework Core

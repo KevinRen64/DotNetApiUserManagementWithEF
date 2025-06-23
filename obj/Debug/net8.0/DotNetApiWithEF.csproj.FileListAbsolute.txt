@@ -86,3 +86,4 @@ C:\Users\Junzhang Ren\source\repos\DotNetApiWithEF\obj\Debug\net8.0\refint\DotNe
 C:\Users\Junzhang Ren\source\repos\DotNetApiWithEF\obj\Debug\net8.0\DotNetApiWithEF.pdb
 C:\Users\Junzhang Ren\source\repos\DotNetApiWithEF\obj\Debug\net8.0\DotNetApiWithEF.genruntimeconfig.cache
 C:\Users\Junzhang Ren\source\repos\DotNetApiWithEF\obj\Debug\net8.0\ref\DotNetApiWithEF.dll
+C:\Users\Junzhang Ren\source\repos\DotNetApiWithEF\obj\Debug\net8.0\DotNetApiWithEF.sourcelink.json
